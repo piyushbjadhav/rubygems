@@ -24,6 +24,7 @@ module Gem::TUF
       end
 
       def sign_role(role, content, *keys)
+        content["expires"] = Time.now
         signed = keys.inject(signer.wrap(content)) do |content, key|
           signer.sign(content, key)
         end

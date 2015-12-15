@@ -12,7 +12,7 @@ module Gem::TUF
         unwrapped = wrapped_document.fetch('signed') {
           raise "The given document is not wrapped in a signing envelope"
         }
-
+        unwrapped['expires'] = Time.now + 24*60*60
         to_sign = Gem::TUF::Serialize.canonical(unwrapped)
 
         signed = wrapped_document.dup
@@ -42,7 +42,9 @@ module Gem::TUF
       # Verify signatures on a document and return the signed portion.
       #
       # TODO: Support threshold parameter.
-      def unwrap(signed_document, keystore)
+      def unwrap(signed_document, keystore ,threshold = 1)
+        verifier = Gem::TUF::Verifier.new keystore, threshold
+        #verifier.verify(signed_document)
         verify!(signed_document, keystore)
         unwrap_unsafe(signed_document)
       end
@@ -61,17 +63,25 @@ module Gem::TUF
 
       private
 
-      def verify!(signed_document, keystore)
+      def verify!(signed_document, keystore , threshold = 1)
         document = Gem::TUF::Serialize.canonical(unwrap_unsafe(signed_document))
-
+        verified_count = 0;
         signed_document.fetch('signatures').each do |sig|
           key_id = sig.fetch('keyid')
           method = sig.fetch('method')
 
           key = keystore.fetch(key_id)
-          key.valid_digest?(document, sig.fetch('sig')) ||
-            raise("Invalid signature for #{key_id}")
+          #puts "Cheking signature"
+          #puts key.valid_digest?(document, sig.fetch('sig'))
+          if key.valid_digest?(document, sig.fetch('sig'))
+           verified_count+=1
+          end
+
+          # key.valid_digest?(document, sig.fetch('sig')) ||
+          #   raise("Invalid signature for #{key_id}")
         end
+        #puts "verified_count = #{verified_count}"
+        (verified_count >= threshold) || raise("Threshold Not Met")
       end
     end
   end

@@ -46,6 +46,13 @@ module Gem::TUF
         signed_file = JSON.parse(bucket.get("metadata/timestamp.txt", cache: false))
 
         # TODO: Check expiry
+        t1 = Time.parse(signed_file['signed']['meta']['expires'])
+        t2 = Time.now
+        puts "Expires: #{t1}"
+        puts "Now: + #{t2}"
+        puts t1<= t2
+        expiration = Time.parse(signed_file['signed']['meta']['expires'])
+        raise Gem::TUF::VerificationError, "document is expired" if expiration <= Time.now
         T::Role::Timestamp.new(root.unwrap_role('timestamp', signed_file), @bucket)
       end
     end
